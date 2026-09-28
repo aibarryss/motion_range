@@ -4,6 +4,9 @@
  * Это замена моку из `mockSource.ts`: контракт тот же, поэтому игровой слой и экран PLAY
  * не знают, откуда кадр. Что здесь уже по-настоящему:
  *   · камера и её понятные ошибки (`camera.ts`), 21 точка × 2 руки (`handTracker.ts`);
+ *   · кадр камеры и скелет рисуются на одном холсте из одного снимка кадра, поэтому
+ *     картинка и точки не расходятся (`handOverlay.ts`);
+ *   · распознавание запускается по кадрам камеры, а не по кадрам отрисовки;
  *   · прицел по указательному пальцу с зеркалированием и сглаживанием EMA (SPEC §2);
  *   · яркость кадра → метрика `brightness` и диагностика TOO_DARK (SPEC §1, §3);
  *   · `NO_HAND`, когда руки нет дольше `ENV.NO_HAND_MS`;
@@ -23,13 +26,17 @@ import { aimPointOf, isPointing, smoothAim, type Point2 } from './aimGesture'
 import { createBrightnessSampler, handBox } from './brightness'
 import { startCamera, type Camera } from './camera'
 import { createFpsMeter } from './fps'
-import { drawHandsOverlay } from './handOverlay'
+import { drawOverlay } from './handOverlay'
 import { createHandTracker, type DetectedHand, type HandTracker } from './handTracker'
 
 export interface VisionSource {
-  /** Видео с камеры — экран PLAY показывает его зеркалом. */
+  /**
+   * Источник кадров камеры. В DOM не вставляется: кадр рисуется на холст оверлея
+   * вместе со скелетом, чтобы картинка и точки гарантированно совпадали.
+   * Нужен снаружи только чтобы узнать размер кадра (videoWidth/videoHeight).
+   */
   readonly video: HTMLVideoElement
-  /** Холст со скелетом: рисует сам vision, у него есть все 21 точка. */
+  /** Холст с кадром камеры и скелетом: рисует сам vision, у него есть все 21 точка. */
   readonly overlay: HTMLCanvasElement
   start(): Promise<void>
   /** Последний готовый кадр. Импульс выстрела отдаётся ровно один раз. */
@@ -51,7 +58,7 @@ export function emptyFrameInput(tMs: number): FrameInput {
 }
 
 /** Safari пока без `requestVideoFrameCallback` — тип берём отдельно, чтобы не спорить с lib.dom. */
-type RvfcHost = { requestVideoFrameCallback?: (callback: () => void) => number }
+type RvfcHost = { requestVideoFrameCallback?: (callback: (nowMs: number) => void) => number }
 
 export function createVisionSource(): VisionSource {
   const overlay = document.createElement('canvas')
@@ -72,11 +79,16 @@ export function createVisionSource(): VisionSource {
   let lastBrightness = 0
   let latencyMs = 0
   let lastDetectMs = Number.NEGATIVE_INFINITY
-  let lastVideoTime = -1
   let noHandSinceMs: number | null = null
   let pendingShoot = false
-  /** Считаем camera fps по кадрам отрисовки — только если браузер не умеет считать по видео. */
-  let cameraFpsByRaf = false
+
+  /**
+   * Снимок кадра камеры — ровно того, по которому посчитаны точки.
+   * Он же рисуется на экран, поэтому скелет и картинка не могут разойтись.
+   * Живёт вне DOM: `<video>` остаётся только источником кадров.
+   */
+  const frameCanvas = document.createElement('canvas')
+  const frameCtx = frameCanvas.getContext('2d')
 
   const onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === ' ' || event.key === 'spacebar') {
@@ -103,53 +115,78 @@ export function createVisionSource(): VisionSource {
 
     starting = false
     window.addEventListener('keydown', onKeyDown)
-    startCameraFpsCounting(camera.video)
-    rafId = requestAnimationFrame(tick)
+
+    // Распознавание запускаем по кадрам камеры, а не по кадрам отрисовки: считаем ровно
+    // один раз на новый кадр и сразу его же рисуем. Если браузер не умеет
+    // requestVideoFrameCallback (Safari), откатываемся на цикл отрисовки.
+    const frameDriven = startFrameLoop(camera.video)
+    if (!frameDriven) rafId = requestAnimationFrame(tick)
   }
 
-  function startCameraFpsCounting(video: HTMLVideoElement): void {
+  /** true — распознавание идёт по кадрам камеры; false — нужен цикл отрисовки. */
+  function startFrameLoop(video: HTMLVideoElement): boolean {
     const host = video as unknown as RvfcHost
     const schedule = host.requestVideoFrameCallback
-    if (schedule === undefined) {
-      cameraFpsByRaf = true
-      return
-    }
-    const onVideoFrame = (): void => {
+    if (schedule === undefined) return false
+
+    const onVideoFrame = (frameMs: number): void => {
       if (camera === null) return
-      cameraFps.tick(performance.now())
+      cameraFps.tick(frameMs)
+      detectIfNeeded(video, frameMs)
       schedule.call(video, onVideoFrame)
     }
     schedule.call(video, onVideoFrame)
+    return true
   }
 
+  /** Резервный путь без requestVideoFrameCallback: кадры отрисовки с ограничением частоты. */
   const tick = (nowMs: number): void => {
     const video = camera?.video
     if (video === undefined) return
     rafId = requestAnimationFrame(tick)
-    if (cameraFpsByRaf) cameraFps.tick(nowMs)
+    cameraFps.tick(nowMs)
     detectIfNeeded(video, nowMs)
   }
 
   function detectIfNeeded(video: HTMLVideoElement, nowMs: number): void {
     if (tracker === null || video.readyState < 2) return
-    if (video.currentTime === lastVideoTime) return // нового кадра камеры ещё нет
-    if (nowMs - lastDetectMs < SMOOTH.DETECT_INTERVAL_MS) return // тик распознавания ~30 fps
+    if (nowMs - lastDetectMs < SMOOTH.DETECT_INTERVAL_MS) return // не чаще тика распознавания
 
     lastDetectMs = nowMs
-    lastVideoTime = video.currentTime
+
+    // Снимок делаем ДО детекции и в том же синхронном блоке: элемент не успевает сменить
+    // кадр между снимком и вызовом модели, поэтому точки описывают ровно ту картинку,
+    // которую мы сейчас нарисуем. Иначе скелет отстаёт от руки на кадр-два, а на медленной
+    // камере (7–8 кадров в секунду) это заметный сдвиг.
+    const hasSnapshot = snapshotFrame(video)
 
     const startedAtMs = performance.now()
     hands = aimingHandFirst(tracker.detect(video, nowMs))
     latencyMs = performance.now() - startedAtMs
     detectFps.tick(nowMs)
 
-    lastBrightness = brightness.sample(video, handBox(hands))
+    lastBrightness = hasSnapshot
+      ? brightness.sample(frameCanvas, frameCanvas.width, frameCanvas.height, handBox(hands))
+      : 0
 
     latestFrame = buildFrame(nowMs)
-    drawHandsOverlay(overlay, hands, {
+    drawOverlay(overlay, hasSnapshot ? frameCanvas : null, hands, {
       mirrored: true,
       highlight: primaryHighlight(latestFrame.diagnostics),
     })
+  }
+
+  /** Сохранить текущий кадр камеры в отдельный холст. false — кадра ещё нет. */
+  function snapshotFrame(video: HTMLVideoElement): boolean {
+    const width = video.videoWidth
+    const height = video.videoHeight
+    if (frameCtx === null || width === 0 || height === 0) return false
+    if (frameCanvas.width !== width || frameCanvas.height !== height) {
+      frameCanvas.width = width
+      frameCanvas.height = height
+    }
+    frameCtx.drawImage(video, 0, 0)
+    return true
   }
 
   function buildFrame(nowMs: number): FrameInput {

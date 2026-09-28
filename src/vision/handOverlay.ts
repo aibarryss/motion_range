@@ -1,10 +1,15 @@
 /**
- * Отрисовка скелета руки поверх видео: 21 точка и связи между ними.
+ * Отрисовка поверх видео: кадр камеры + скелет руки (21 точка и связи).
  *
- * Почему рисует vision, а не игровой слой: в контракте `HandFrame` есть только
- * координата прицела и признаки — самих 21 точки там нет (это записано в CODE_REVIEW
- * как открытое решение). Vision эти точки уже держит в руках, поэтому и рисует их сам,
- * на отдельном холсте. Игровой слой остаётся про мишени и счёт.
+ * ПОЧЕМУ КАДР РИСУЕТСЯ ЗДЕСЬ ЖЕ, А НЕ ВИДЕО-ЭЛЕМЕНТОМ В DOM.
+ * Раньше видео показывал `<video>`, а скелет — отдельный холст. Два независимых слоя
+ * легко расходятся: у видео свои `object-fit`/зеркалирование, у холста свои. Хуже того,
+ * видео на экране всегда свежее того кадра, по которому посчитаны точки, поэтому при
+ * медленной камере (7–8 кадров в секунду в тёмной комнате) скелет «отстаёт» от руки.
+ *
+ * Теперь и картинка, и точки берутся из одного и того же снимка кадра — они не могут
+ * разойтись по определению. Vision передаёт сюда тот самый холст-снимок, по которому
+ * считала точки.
  */
 
 import { fitCanvas } from '../ui/canvas'
@@ -22,8 +27,9 @@ const BONE_COLOR = 'rgba(120, 230, 190, 0.9)'
 const JOINT_COLOR = 'rgba(255, 255, 255, 0.95)'
 const ALERT_COLOR = '#ff6b6b'
 
-export function drawHandsOverlay(
+export function drawOverlay(
   canvas: HTMLCanvasElement,
+  frame: CanvasImageSource | null,
   hands: readonly DetectedHand[],
   options: OverlayOptions,
 ): void {
@@ -32,6 +38,32 @@ export function drawHandsOverlay(
   const { ctx, width, height } = fitted
 
   ctx.clearRect(0, 0, width, height)
+
+  if (frame !== null) {
+    // кадр камеры растягивается ровно по рамке сцены: пропорции рамки равны пропорциям
+    // кадра, поэтому искажения нет, а зеркало делаем здесь же — одним преобразованием
+    ctx.save()
+    if (options.mirrored) {
+      ctx.translate(width, 0)
+      ctx.scale(-1, 1)
+    }
+    ctx.drawImage(frame, 0, 0, width, height)
+    ctx.restore()
+  }
+
+  // TOO_DARK: затемняем оверлей (SPEC §3, колонка «Подсветка»)
+  if (options.highlight?.dim === true) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+    ctx.fillRect(0, 0, width, height)
+  }
+
+  // NO_HAND: рамка кадра
+  if (options.highlight?.frame === true) {
+    ctx.strokeStyle = ALERT_COLOR
+    ctx.lineWidth = 4
+    ctx.strokeRect(8, 8, width - 16, height - 16)
+  }
+
   if (hands.length === 0) return
 
   const toScreenX = (x: number): number => (options.mirrored ? 1 - x : x) * width
@@ -43,14 +75,14 @@ export function drawHandsOverlay(
   )
 
   for (const hand of hands) {
-    ctx.lineWidth = 2
-    ctx.strokeStyle = BONE_COLOR
     for (const connection of HAND_CONNECTIONS) {
       const from = hand.landmarks[connection.start]
       const to = hand.landmarks[connection.end]
       if (from === undefined || to === undefined) continue
-      const alert = highlightedEdges.has(`${connection.start}-${connection.end}`)
-      ctx.strokeStyle = alert ? ALERT_COLOR : BONE_COLOR
+      ctx.lineWidth = 2
+      ctx.strokeStyle = highlightedEdges.has(`${connection.start}-${connection.end}`)
+        ? ALERT_COLOR
+        : BONE_COLOR
       ctx.beginPath()
       ctx.moveTo(toScreenX(from.x), toScreenY(from.y))
       ctx.lineTo(toScreenX(to.x), toScreenY(to.y))

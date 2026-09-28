@@ -69,7 +69,6 @@ export function createPlayScreen(ctx: AppContext): Screen {
   let engine: GameEngine | null = null
   let mock: MockSource | null = null
   let vision: VisionSource | null = null
-  let mountedVideo: HTMLVideoElement | null = null
   let readFrame: (nowMs: number) => FrameInput = emptyFrameInput
   let ended = false
 
@@ -122,8 +121,6 @@ export function createPlayScreen(ctx: AppContext): Screen {
 
   function stopVision(): void {
     if (vision === null) return
-    mountedVideo?.remove()
-    mountedVideo = null
     vision.overlay.remove()
     vision.dispose()
     vision = null
@@ -155,11 +152,10 @@ export function createPlayScreen(ctx: AppContext): Screen {
       .then(() => {
         const source = vision
         if (source === null) return
-        mountedVideo = source.video
-        stage.insertBefore(mountedVideo, stage.firstChild)
+        // видео-элемент в DOM не вставляем: кадр рисует сам vision на холст оверлея
         stage.insertBefore(source.overlay, canvas)
         readFrame = source.read
-        const frameSize = applyVideoAspect(mountedVideo)
+        const frameSize = applyVideoAspect(source.video)
         setControls(
           frameSize === null ? VISION_CONTROLS : [...VISION_CONTROLS, `кадр камеры: ${frameSize}`],
         )

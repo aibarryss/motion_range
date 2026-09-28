@@ -5,6 +5,9 @@
  * Считаем среднюю luma на уменьшенной копии кадра: для порога «мало света» этого
  * достаточно, а по времени операция почти бесплатная. Область — рамка руки, если рука
  * найдена, иначе весь кадр (SPEC §1).
+ *
+ * Источник — тот же снимок кадра, по которому считались точки: тогда яркость и скелет
+ * описывают одну и ту же картинку, а не два разных момента времени.
  */
 
 import type { DetectedHand } from './handTracker'
@@ -21,7 +24,7 @@ export interface Box {
 }
 
 export interface BrightnessSampler {
-  sample(video: HTMLVideoElement, box: Box | null): number
+  sample(source: CanvasImageSource, sourceWidth: number, sourceHeight: number, box: Box | null): number
   dispose(): void
 }
 
@@ -46,12 +49,11 @@ export function handBox(hands: readonly DetectedHand[]): Box | null {
 }
 
 export function createBrightnessSampler(): BrightnessSampler {
-  let canvas: HTMLCanvasElement | null = null
   let ctx: CanvasRenderingContext2D | null = null
 
   function ensureContext(): CanvasRenderingContext2D | null {
     if (ctx !== null) return ctx
-    canvas = document.createElement('canvas')
+    const canvas = document.createElement('canvas')
     canvas.width = SAMPLE_WIDTH
     canvas.height = SAMPLE_HEIGHT
     ctx = canvas.getContext('2d', { willReadFrequently: true })
@@ -59,38 +61,39 @@ export function createBrightnessSampler(): BrightnessSampler {
   }
 
   return {
-    sample(video: HTMLVideoElement, box: Box | null): number {
+    sample(
+      source: CanvasImageSource,
+      sourceWidth: number,
+      sourceHeight: number,
+      box: Box | null,
+    ): number {
       const context = ensureContext()
-      if (context === null) return 0
-
-      const videoWidth = video.videoWidth
-      const videoHeight = video.videoHeight
-      if (videoWidth === 0 || videoHeight === 0) return 0
+      if (context === null || sourceWidth === 0 || sourceHeight === 0) return 0
 
       // рамка руки в пикселях кадра; если руки нет — берём весь кадр
-      const sx = box === null ? 0 : Math.max(0, Math.floor(box.x * videoWidth) - 8)
-      const sy = box === null ? 0 : Math.max(0, Math.floor(box.y * videoHeight) - 8)
-      const sw = box === null ? videoWidth : Math.min(videoWidth - sx, Math.ceil(box.width * videoWidth) + 16)
-      const sh = box === null ? videoHeight : Math.min(videoHeight - sy, Math.ceil(box.height * videoHeight) + 16)
+      const sx = box === null ? 0 : Math.max(0, Math.floor(box.x * sourceWidth) - 8)
+      const sy = box === null ? 0 : Math.max(0, Math.floor(box.y * sourceHeight) - 8)
+      const sw =
+        box === null ? sourceWidth : Math.min(sourceWidth - sx, Math.ceil(box.width * sourceWidth) + 16)
+      const sh =
+        box === null ? sourceHeight : Math.min(sourceHeight - sy, Math.ceil(box.height * sourceHeight) + 16)
       if (sw <= 0 || sh <= 0) return 0
 
       try {
-        context.drawImage(video, sx, sy, sw, sh, 0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT)
+        context.drawImage(source, sx, sy, sw, sh, 0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT)
         const data = context.getImageData(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT).data
         let sum = 0
-        const pixels = SAMPLE_WIDTH * SAMPLE_HEIGHT
         for (let index = 0; index < data.length; index += 4) {
           // luma по Rec.601 — так же считают яркость кадра в видео
           sum += 0.299 * (data[index] ?? 0) + 0.587 * (data[index + 1] ?? 0) + 0.114 * (data[index + 2] ?? 0)
         }
-        return Math.round(sum / pixels)
+        return Math.round(sum / (SAMPLE_WIDTH * SAMPLE_HEIGHT))
       } catch {
         // кадр мог не успеть появиться — вернём «нет данных», а не сломаем цикл
         return 0
       }
     },
     dispose(): void {
-      canvas = null
       ctx = null
     },
   }

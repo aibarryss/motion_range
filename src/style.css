@@ -198,18 +198,9 @@ body {
   background: #05070d;
 }
 
-/* Зеркалим показ: человек ждёт, что поднятая правая рука уедет вправо.
-   Тот же разворот применён к координатам в vision (aimGesture.aimPointOf). */
-.play__video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
-  background: #05070d;
-}
-
+/* Кадр камеры и скелет рисует vision на одном холсте (src/vision/handOverlay.ts):
+   зеркало и масштаб там делаются одним преобразованием, поэтому картинка и точки
+   не могут разойтись. Отдельного <video> в разметке нет. */
 .play__overlay,
 .play__canvas {
   position: absolute;
