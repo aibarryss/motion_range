@@ -19,12 +19,13 @@
  * До этого `HandFrame.features` заполняется нулями — честная заглушка, а не выдуманные числа.
  */
 
-import { ENV, SMOOTH, ZERO_FEATURES } from '../shared/consts'
+import { ENV, SMOOTH } from '../shared/consts'
 import { primaryDiagnostic } from '../shared/diagnostics'
 import type { Diagnostic, FrameInput, Gesture, HandFrame } from '../shared/types'
 import { aimPointOf, isPointing, smoothAim, type Point2 } from './aimGesture'
 import { createBrightnessSampler, handBox } from './brightness'
 import { startCamera, type Camera } from './camera'
+import { createFeatureTracker, type FrameSize } from './features'
 import { createFpsMeter } from './fps'
 import { drawOverlay } from './handOverlay'
 import { createHandTracker, type DetectedHand, type HandTracker } from './handTracker'
@@ -67,6 +68,8 @@ export function createVisionSource(): VisionSource {
   const brightness = createBrightnessSampler()
   const cameraFps = createFpsMeter()
   const detectFps = createFpsMeter()
+  const features = createFeatureTracker()
+  let frameSize: FrameSize = { width: 0, height: 0 }
 
   let camera: Camera | null = null
   let tracker: HandTracker | null = null
@@ -186,6 +189,8 @@ export function createVisionSource(): VisionSource {
       frameCanvas.height = height
     }
     frameCtx.drawImage(video, 0, 0)
+    // размер кадра нужен признакам: координаты MediaPipe нормированы по осям отдельно
+    frameSize = { width, height }
     return true
   }
 
@@ -210,8 +215,8 @@ export function createVisionSource(): VisionSource {
         x: handAim === null ? 0 : handAim.x,
         y: handAim === null ? 0 : handAim.y,
         confidence: hand.score,
-        // признаки SPEC §1 — следующий шаг; пустой снапшот вместо выдуманных чисел
-        features: { ...ZERO_FEATURES },
+        // признаки SPEC §1 — из них считаются и выстрел, и щит, и подсказки с числами
+        features: features.compute(hand.landmarks, frameSize, nowMs, hand.handedness),
       }
     })
 
@@ -300,6 +305,7 @@ export function createVisionSource(): VisionSource {
     tracker?.close()
     tracker = null
     brightness.dispose()
+    features.reset()
     hands = []
     latestFrame = null
     aim = null

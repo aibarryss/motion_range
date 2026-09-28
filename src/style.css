@@ -285,7 +285,8 @@ body {
 
 /* --- Signal Doctor --- */
 
-.doctor {
+.doctor,
+.features {
   display: grid;
   gap: 0.4rem;
   padding: 0.75rem;
@@ -294,14 +295,16 @@ body {
   background: var(--panel);
 }
 
-.doctor__title {
+.doctor__title,
+.features__title {
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.doctor__row {
+.doctor__row,
+.features__row {
   font-size: 0.8rem;
   grid-template-columns: 9.5rem auto;
 }

@@ -18,6 +18,7 @@ import { createVisionSource, emptyFrameInput, type VisionSource } from '../../vi
 import { fitCanvas } from '../canvas'
 import { createDiagnosticCard, createSignalDoctor } from '../diagnostic'
 import { button, el } from '../dom'
+import { createFeaturePanel } from '../featurePanel'
 import { createHud } from '../hud'
 import type { AppContext, Screen } from '../router'
 
@@ -59,11 +60,18 @@ export function createPlayScreen(ctx: AppContext): Screen {
 
   const doctor = createSignalDoctor()
   const card = createDiagnosticCard()
+  const featurePanel = createFeaturePanel()
   const controlsList = el('ul', 'controls__list')
   const controls = el('details', 'controls')
   controls.append(el('summary', 'controls__summary', 'Управление'), controlsList)
   const side = el('aside', 'play__side')
-  side.append(doctor.root, card.root, controls, button('Закончить раунд', () => finishRound(performance.now()), 'ghost'))
+  side.append(
+    doctor.root,
+    card.root,
+    featurePanel.root,
+    controls,
+    button('Закончить раунд', () => finishRound(performance.now()), 'ghost'),
+  )
   root.append(frameBox, side)
 
   let engine: GameEngine | null = null
@@ -110,6 +118,7 @@ export function createPlayScreen(ctx: AppContext): Screen {
     const diagnostic = primaryDiagnostic(snapshot.frame.diagnostics)
     doctor.update(diagnostic, snapshot.frame.metrics.brightness)
     card.update(diagnostic)
+    featurePanel.update(snapshot.frame)
   }
 
   function onEnd(result: RoundResult): void {
