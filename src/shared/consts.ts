@@ -1,13 +1,26 @@
 /**
- * Все пороги в одном месте (docs/SPEC_Diagnostics_and_Fire.md).
- * Подбираются на реплей-харнессе, правятся только здесь.
+ * Все пороги в одном месте (единственный источник чисел для кода).
+ * Текстовое описание и условия правил — docs/SPEC_Diagnostics_and_Fire.md.
+ * Порядок изменения порога: SPEC → тест заморозки → эта константа.
+ *
+ * Версия: v0.2 (правка большого пальца, см. THUMB и SPEC §0).
  */
+
+import type { DiagnosticSeverity, HandFeatures } from './types'
 
 // --- нормализация: все признаки в единицах ширины ладони W = |lm[5] - lm[17]| ---
 
 export const THUMB = {
-  FIST_MAX: 0.18, // в кулаке thumbExtension < 0.18
-  OUT_MIN: 0.25, // торчит, если > 0.25 (код THUMB_OUT)
+  /** В правильном кулаке thumbExtension < 0.18. Это же число звучит в подсказке THUMB_OUT. */
+  TARGET_MAX_FIST: 0.18,
+  /** thumbExtension > 0.25 при собранных пальцах → диагностика THUMB_OUT. */
+  OUT_MIN: 0.25,
+  /**
+   * Правило THUMB_OUT смотрит на fistScore без учёта большого пальца (v0.2)
+   * и требует собранные пальцы: fistScore ≥ 0.6.
+   * В v0.1 thumbExtension входил в fistScore, поэтому правило было недостижимо.
+   */
+  OUT_FIST_SCORE_MIN: 0.6,
 } as const;
 
 export const PALM = {
@@ -30,7 +43,7 @@ export const SCORES = {
   HOLD: 0.6, // порог удержания (гистерезис)
 } as const;
 
-// --- автомат выстрела (мс) ---
+// --- автомат выстрела (мс): IDLE → ARMED → FIRE → COOLDOWN → IDLE ---
 
 export const FIRE = {
   FIST_DWELL_MS: 100, // fistScore > 0.8 держится 80–120 мс → ARMED
@@ -58,3 +71,30 @@ export const SMOOTH = {
   GESTURE_DWELL_FRAMES: 3, // жест подтверждается после N подряд кадров
   DETECT_INTERVAL_MS: 33, // тик распознавания ~30 FPS независимо от rAF
 } as const;
+
+// --- диагностика: приоритет показа (SPEC §3, §5) ---
+
+/**
+ * Signal Doctor и HUD показывают ровно одну диагностику — самую severe.
+ * Меньше число = выше приоритет.
+ */
+export const SEVERITY_ORDER: Record<DiagnosticSeverity, number> = {
+  block: 0,
+  warn: 1,
+  info: 2,
+};
+
+/**
+ * Нулевой снапшот признаков для мока FrameInput (клавиатурный ввод) и заглушек.
+ * Реальный vision обязан заполнять features измеримыми значениями.
+ */
+export const ZERO_FEATURES: HandFeatures = {
+  fistScore: 0,
+  openPalmScore: 0,
+  thumbExtension: 0,
+  palmFrontality: 0,
+  palmWidthRatio: 0,
+  palmRollDeg: 0,
+  openingSpeedMs: null,
+  fingerCurlDeg: [0, 0, 0, 0],
+};

@@ -1,26 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import type { DiagnosticCode, Gesture, HandFrame } from '../src/shared/types'
-import { emptyFrameInput, sampleFrameInput } from './fixtures/frame-input.example'
+import type { Diagnostic, DiagnosticCode, Gesture, HandFrame } from '../src/shared/types'
+import { emptyFrameInput, sampleDiagnostic, sampleFrameInput } from './fixtures/frame-input.example'
 
 /**
- * «Заморозка» типового контракта v0.1-contract (src/shared/types.ts).
+ * «Заморозка» типового контракта v0.2 (src/shared/types.ts).
  * Тест остаётся сборным только пока состав union'ов и поля структур совпадают
  * с замороженными. Если проверка падает — сначала обсудите изменение контракта
  * вдвоём (см. TASKS.md), обновите types.ts, затем тест.
  */
 
 describe('contract: Gesture', () => {
-  it('состав union заморожен: ровно AIM/SHOOT/SHIELD/NONE', () => {
+  it('состав union заморожен: ровно AIM/SHIELD/FIST/NONE (v0.2: без SHOOT)', () => {
     // Record<Gesture, true> не скомпилируется при добавлении/переименовании варианта
     const all: Record<Gesture, true> = {
       AIM: true,
-      SHOOT: true,
       SHIELD: true,
+      FIST: true,
       NONE: true,
     }
     const keys = Object.keys(all)
     expect(keys).toHaveLength(4)
-    expect(keys).toEqual(expect.arrayContaining(['AIM', 'SHOOT', 'SHIELD', 'NONE']))
+    expect(keys).toEqual(expect.arrayContaining(['AIM', 'SHIELD', 'FIST', 'NONE']))
+  })
+
+  it('выстрел приходит импульсом, а не состоянием руки', () => {
+    expect(sampleFrameInput.events.shoot).toBe(false)
+    expect(Object.keys(sampleFrameInput.events)).toEqual(['shoot'])
   })
 })
 
@@ -59,12 +64,33 @@ describe('contract: DiagnosticCode', () => {
   })
 })
 
+describe('contract: диагностика обязана нести числа', () => {
+  it('MetricReading содержит значение, порог и направление сравнения', () => {
+    const m = sampleDiagnostic.metric
+    expect(Number.isFinite(m.value)).toBe(true)
+    expect(Number.isFinite(m.limit)).toBe(true)
+    expect(['lt', 'lte', 'gt', 'gte']).toContain(m.comparator)
+    expect(m.value).toBeLessThan(m.limit) // LOW_CONFIDENCE: confidence < порога
+  })
+
+  it('подсветка задана для диагностики, которую видит игрок', () => {
+    expect(sampleDiagnostic.highlight?.points?.length).toBe(21)
+    expect(sampleDiagnostic.handedness).toBe('L')
+  })
+})
+
 describe('contract: FrameInput fixtures', () => {
   it('валидный пример собирается и соответствует ограничениям контракта', () => {
     expect(sampleFrameInput.hands.length).toBeGreaterThan(0)
     expect(sampleFrameInput.hands.length).toBeLessThanOrEqual(2)
-    expect(sampleFrameInput.fps).toBeGreaterThan(0)
+    expect(sampleFrameInput.metrics.detectFps).toBeGreaterThan(0)
+    expect(sampleFrameInput.metrics.brightness).toBeGreaterThan(0)
+    expect(sampleFrameInput.tMs).toBeGreaterThan(0)
     expect(emptyFrameInput.hands).toHaveLength(0)
+  })
+
+  it('калибровка необязательна: null пока игрок её не прошёл', () => {
+    expect(sampleFrameInput.calibration).toBeNull()
   })
 })
 
@@ -74,7 +100,10 @@ describe('contract: негативные случаи', () => {
     const badGesture: Gesture = 'FIRE'
     // @ts-expect-error в HandFrame отсутствует обязательное поле y
     const badHand: HandFrame = { gesture: 'AIM', handedness: 'R', x: 0.5, confidence: 0.9 }
+    // @ts-expect-error в v0.2 у Diagnostic нет поля measured — числа живут в metric
+    const badDiag: Diagnostic = { ...sampleDiagnostic, measured: 0.44 }
     void badGesture
     void badHand
+    void badDiag
   })
 })
