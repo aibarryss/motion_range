@@ -22,3 +22,6 @@ dist/
 
 # test coverage
 coverage/
+
+# local scratch: скриншоты и вложения, которые сохраняет рабочее окружение
+temp/
