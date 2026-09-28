@@ -12,7 +12,7 @@ import type { AppContext, Screen } from '../router'
 
 const STEPS: ReadonlyArray<readonly [string, string]> = [
   ['Показать открытые ладони', 'стабильная зона кисти: palmWidthRatio_stable'],
-  ['Сжать кулак', 'личная норма большого пальца: thumbExtension_calm'],
+  ['Отвести и прижать большой палец', 'личная норма пальца-курка: thumbExtension_calm'],
   ['Сделать тестовое раскрытие', 'личный темп раскрытия: openDurationPersonalMs'],
   ['Наклониться влево и вправо', 'нейтраль плеч и комфортный наклон: leanNeutral, dodgeRange'],
 ]
