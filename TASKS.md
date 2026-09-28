@@ -11,13 +11,13 @@
 ## Milestone 0 — репозиторий и деплой (Пн, до 18:40)
 - [x] Репо public + первый коммит после старта (28.09 17:17)
 - [x] Координационные файлы: TASKS.md, docs/, README-заготовка, .gitignore
-- [ ] Vite-скаффолд `vanilla-ts`, `npm i`, dev-сервер, коммит в main @A (18:10–18:25)
-- [ ] Модели в `public/`: `hand_landmarker.task` + wasm из `node_modules/@mediapipe/tasks-vision/wasm` (самохостинг — страховка от падения CDN) @A (18:25–18:40)
-- [ ] Импорт репо в Vercel, живой HTTPS-деплой, проверка с телефона @B (18:25–18:40)
-- [ ] Оба: `git pull`, `npm install`, `npm run dev` работает локально
+- [x] Vite-скаффолд `vanilla-ts`, `npm i`, dev-сервер, коммит в main (7c931d3)
+- [x] Модели в `public/`: wasm + `hand_landmarker.task` (самохостинг) — смоук-тест в браузере пройден: init GPU-делегат, detectForVideo работает
+- [ ] Импорт репо в Vercel, живой HTTPS-деплой, проверка с телефона @B ← **единственный незакрытый пункт M0**
+- [x] `npm run dev` проверен (порт 5173); второму участнику: `git pull && npm install && npm run dev`
 
 ## Milestone 1 — жестом попадаю в мишень, счёт растёт (Пн 23:00)
-- [ ] Контракт: `src/shared/types.ts` (FrameInput/HandFrame/Diagnostic) + `src/shared/consts.ts` (пороги из спеца) @A, PR, тег `v0.1-contract` (к 19:00)
+- [x] Контракт: `src/shared/types.ts` + `src/shared/consts.ts`, тег `v0.1-contract`, мерж в main (213d23e)
 - [ ] Каркас экранов MENU/CALIBRATE/PLAY/GAMEOVER, роутер состояний @B (18:40–19:00)
 - [ ] Камера + HandLandmarker + отрисовка 21 точки × 2 руки @A (19:00–19:50)
 - [ ] Признаки: fistScore, openPalmScore, thumbExtension, palmFrontality, palmWidthRatio @A (19:50–20:30)

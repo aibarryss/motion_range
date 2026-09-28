@@ -43,7 +43,21 @@ Production-сборка: `npm run build && npm run preview`.
 
 ## Стек
 
-Vite + TypeScript · @mediapipe/tasks-vision (HandLandmarker, PoseLandmarker) · Canvas 2D + DOM-overlay · Web Audio API · localStorage · деплой на Vercel
+Vite + TypeScript · @mediapipe/tasks-vision 1.0.1 (HandLandmarker, PoseLandmarker) · Canvas 2D + DOM-overlay · Web Audio API · localStorage · деплой на Vercel
+
+Модели и WASM-рантайм MediaPipe самохостятся из `public/` (`public/models/hand_landmarker.task`, `public/mediapipe/wasm/`) — приложение не зависит от доступности CDN в момент защиты.
+
+## Структура
+
+```
+src/
+├─ vision/    # распознавание: камера, признаки, классификатор, диагностика
+├─ game/      # игровой цикл, мишени, счёт
+├─ ui/        # экраны MENU/CALIBRATE/PLAY/GAMEOVER, HUD
+├─ shared/    # замороженный контракт FrameInput (тег v0.1-contract)
+└─ main.ts
+docs/         # TWIST, ERROR-MODE, PITCH, SUBMIT, спецификации
+```
 
 ## Предзаготовки
 
