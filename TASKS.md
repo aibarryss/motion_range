@@ -24,7 +24,7 @@
 - [x] Харнесс тестов: vitest + `typecheck` + `tests/**` (ветка `chore/test-harness`, c305ded) — в main ещё не влит (Шаг 6 плана ревью)
 - [x] Каркас экранов MENU/CALIBRATE/PLAY/GAMEOVER, роутер состояний @B (ветка `feat/game-skeleton`, e5310ff)
 - [x] Камера + HandLandmarker + отрисовка 21 точки × 2 руки @A (ветка `feat/game-skeleton`, 30233ea; прицел по указательному пальцу, яркость, диагностики NO_HAND/TOO_DARK, мок остался запасным по `?input=mock`)
-- [ ] Признаки: fistScore, openPalmScore, thumbExtension, palmFrontality, palmWidthRatio @A (19:50–20:30)
+- [x] Признаки: fistScore, openPalmScore, thumbExtension, palmFrontality, palmWidthRatio @A (5aff72c; добавлены углы сгиба пальцев, palmRoll и длительность раскрытия; вывод в панель «Признаки (debug)», 16 тестов)
 - [x] Мок-FrameInput с клавиатуры + игровой цикл: мишени, прицел, попадание, счёт, таймер 60 с @B (ветка `feat/game-skeleton`, e5310ff; правила раунда закреплены в `tests/engine.test.ts`)
 - [ ] Автомат выстрела по SPEC §2 (dwell, окно, cooldown, гистерезис — числа только там, код читает `consts.ts`) @A (20:45–21:45)
 - [ ] Интеграция: реальный поток вместо мока, HUD (счёт/время/индикатор), зеркалирование видео @B (20:45–21:45)
