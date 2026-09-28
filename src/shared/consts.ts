@@ -10,17 +10,16 @@ import type { DiagnosticSeverity, HandFeatures } from './types'
 
 // --- нормализация: все признаки в единицах ширины ладони W = |lm[5] - lm[17]| ---
 
+/**
+ * Большой палец — это курок (решение от 28.09, SPEC §2).
+ * Палец отведён — рука готова к выстрелу, палец прижат — выстрел.
+ * Между порогами работает гистерезис: значение в этой зоне не меняет решения.
+ */
 export const THUMB = {
-  /** В правильном кулаке thumbExtension < 0.18. Это же число звучит в подсказке THUMB_OUT. */
-  TARGET_MAX_FIST: 0.18,
-  /** thumbExtension > 0.25 при собранных пальцах → диагностика THUMB_OUT. */
-  OUT_MIN: 0.25,
-  /**
-   * Правило THUMB_OUT смотрит на fistScore без учёта большого пальца (v0.2)
-   * и требует собранные пальцы: fistScore ≥ 0.6.
-   * В v0.1 thumbExtension входил в fistScore, поэтому правило было недостижимо.
-   */
-  OUT_FIST_SCORE_MIN: 0.6,
+  /** thumbExtension < 0.18 — палец прижат к ладони, курок нажат. */
+  TUCKED_MAX: 0.18,
+  /** thumbExtension > 0.25 — палец отведён, рука готова к выстрелу. */
+  EXTENDED_MIN: 0.25,
 } as const;
 
 export const PALM = {
@@ -39,18 +38,35 @@ export const FINGER = {
 } as const;
 
 export const SCORES = {
-  ENTER: 0.8, // порог входа в состояние (fistScore/openPalmScore)
-  HOLD: 0.6, // порог удержания (гистерезис)
+  /** Вход в состояние жеста: fistScore/openPalmScore выше этого значения. */
+  ENTER: 0.8,
+  /** Удержание: ниже этого значения состояние сбрасывается (гистерезис). */
+  HOLD: 0.6,
 } as const;
 
-// --- автомат выстрела (мс): IDLE → ARMED → FIRE → COOLDOWN → IDLE ---
+/**
+ * Окно измерения скорости раскрытия ладони (признак `openingSpeedMs`, SPEC §1).
+ *
+ * Отдельная группа, а не внутри `FIRE`: с 28.09 выстрел — это большой палец, и окно
+ * «успеть раскрыться» к выстрелу больше не относится. Признак остаётся: он питает
+ * индикатор «Motion speed» в Signal Doctor (SPEC §5).
+ */
+export const OPENING = {
+  WINDOW_MS: 400,
+} as const;
+
+// --- автомат выстрела (мс): IDLE → ARMED → FIRE → COOLDOWN → ARMED ---
+// Выстрел = прижатие большого пальца в позе прицела (SPEC §2).
 
 export const FIRE = {
-  FIST_DWELL_MS: 100, // fistScore > 0.8 держится 80–120 мс → ARMED
-  OPEN_DWELL_MS: 60, // openPalmScore > 0.8 держится 50–80 мс → FIRE
-  OPEN_WINDOW_MS: 400, // раскрыться нужно в пределах этого окна после ARMED
-  COOLDOWN_MS: 250, // один взмах = один выстрел
-  TOO_SLOW_MS: 600, // раскрытие дольше — код SHOOT_TOO_SLOW
+  READY_DWELL_MS: 100, // палец отведён и держится → ARMED (рука готова)
+  PULL_DWELL_MS: 60, // палец прижат и держится → FIRE
+  COOLDOWN_MS: 250, // один прижим = один выстрел
+  /**
+   * Слот правила SHOOT_TOO_SLOW. В механике «прижал палец» понятия «слишком медленно»
+   * нет — вопрос открыт (CODE_REVIEW, пункт 8). Число пока не используется.
+   */
+  TOO_SLOW_MS: 600,
 } as const;
 
 // --- диагностика среды ---

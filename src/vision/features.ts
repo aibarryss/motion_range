@@ -17,7 +17,7 @@
  */
 
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
-import { FINGER, FIRE, SCORES, ZERO_FEATURES } from '../shared/consts'
+import { FINGER, OPENING, SCORES, ZERO_FEATURES } from '../shared/consts'
 import type { Handedness, HandFeatures } from '../shared/types'
 import { LM } from './aimGesture'
 
@@ -151,9 +151,9 @@ export function createFeatureTracker(): FeatureTracker {
 /**
  * Длительность текущего перехода кулак → ладонь, мс; null — перехода нет.
  *
- * Смысл для игры: раскрытие дольше `FIRE.OPEN_WINDOW_MS` — это уже прицеливание, а не
- * выстрел, и оно не должно считаться попыткой. Здесь только измерение, решение принимает
- * автомат выстрела (следующий шаг).
+ * Смысл для игры: раскрытие дольше `OPENING.WINDOW_MS` — это плавное движение, а не
+ * переход, и оно не считается одним жестом. Здесь только измерение: решают потребители
+ * (индикатор «Motion speed» в Signal Doctor, SPEC §5).
  */
 function measureOpening(
   lastFistMs: Map<Handedness, number>,
@@ -173,7 +173,7 @@ function measureOpening(
 
   lastFistMs.delete(handedness)
   const durationMs = nowMs - fistAt
-  return durationMs <= FIRE.OPEN_WINDOW_MS ? durationMs : null
+  return durationMs <= OPENING.WINDOW_MS ? durationMs : null
 }
 
 function toFrameUnits(landmarks: readonly NormalizedLandmark[], size: FrameSize): P[] | null {

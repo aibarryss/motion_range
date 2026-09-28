@@ -3,7 +3,7 @@ import type { Diagnostic, DiagnosticCode, Gesture, HandFrame } from '../src/shar
 import { emptyFrameInput, sampleDiagnostic, sampleFrameInput } from './fixtures/frame-input.example'
 
 /**
- * «Заморозка» типового контракта v0.2 (src/shared/types.ts).
+ * «Заморозка» типового контракта v0.3 (src/shared/types.ts).
  * Тест остаётся сборным только пока состав union'ов и поля структур совпадают
  * с замороженными. Если проверка падает — сначала обсудите изменение контракта
  * вдвоём (см. TASKS.md), обновите types.ts, затем тест.
@@ -26,6 +26,14 @@ describe('contract: Gesture', () => {
   it('выстрел приходит импульсом, а не состоянием руки', () => {
     expect(sampleFrameInput.events.shoot).toBe(false)
     expect(Object.keys(sampleFrameInput.events)).toEqual(['shoot'])
+  })
+
+  it('состояние автомата выстрела едет отдельным полем (v0.3)', () => {
+    // Раньше HUD выводил состояние из жеста руки: «готов» и «курок прижат» — это про
+    // большой палец, а не про позу кисти, поэтому состоянию нужен собственный слот.
+    expect(Object.keys(sampleFrameInput.fire).sort()).toEqual(['heldMs', 'state'])
+    expect(emptyFrameInput.fire.state).toBe('IDLE')
+    expect(typeof sampleFrameInput.fire.heldMs).toBe('number')
   })
 })
 

@@ -1,6 +1,6 @@
 /**
  * Замороженный контракт между Vision (A) и Game (B).
- * Версия: **v0.2** (изменения против v0.1 — в docs/SPEC_Diagnostics_and_Fire.md, §0).
+ * Версия: **v0.3** (изменения против v0.1 — в docs/SPEC_Diagnostics_and_Fire.md, §0).
  * После тега v0.2-contract меняется только вдвоём, через PR в src/shared/**.
  *
  * Правило проекта: числа в контракте не хранятся — только пороги из consts.ts,
@@ -144,6 +144,19 @@ export interface VisionEvents {
   shoot: boolean;
 }
 
+/**
+ * Состояние автомата выстрела (SPEC §2).
+ * Как состояние руки это не выражается: «готов» и «курок прижат» — это про большой палец,
+ * а не про позу кисти, поэтому состояние едет отдельным полем.
+ */
+export type FireState = 'IDLE' | 'ARMED' | 'FIRE' | 'COOLDOWN'
+
+export interface FireFrame {
+  state: FireState
+  /** сколько длится текущее состояние, мс — HUD и диагностика «прижал рано» смотрят сюда */
+  heldMs: number
+}
+
 /** Метрики кадра для HUD (SPEC §6). */
 export interface FrameMetrics {
   /** fps камеры */
@@ -184,6 +197,8 @@ export interface FrameInput {
   hands: HandFrame[]; // 0..2
   player: PlayerFrame;
   events: VisionEvents;
+  /** Автомат выстрела: HUD показывает его строкой `state` (SPEC §6). */
+  fire: FireFrame;
   /** Отсортированы по приоритету: block → warn → info (SPEC §3.1). */
   diagnostics: Diagnostic[];
   metrics: FrameMetrics;

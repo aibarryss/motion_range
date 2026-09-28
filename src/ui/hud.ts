@@ -1,11 +1,9 @@
 /**
  * HUD с метриками (SPEC §6): fps, задержка, уверенность, состояние, счёт, таймер.
  *
- * Честно про контракт: SPEC §6 показывает строку `state ARMED`, но в контракте v0.2
- * состояния автомата нет — `FrameInput` несёт жест руки (`HandFrame.gesture`) и импульс
- * `events.shoot`. Пока состояние выводится из жеста: FIST → ARMED, импульс → FIRE.
- * Нужен точный автомат в HUD (включая COOLDOWN) — это отдельное изменение контракта
- * по правилу «SPEC → тест → types.ts», а не мелкая правка HUD.
+ * Строка `state` берётся прямо из контракта — `FrameInput.fire` (v0.3). Раньше состояние
+ * выводилось из жеста руки, потому что автомата в контракте не было; теперь HUD показывает
+ * то же, что автомат, включая ARMED и COOLDOWN.
  */
 
 import { labeledLine, el, type Line } from './dom'
@@ -44,29 +42,13 @@ export function createHud(): Hud {
     poseFps.set(frame.metrics.poseFps === null ? '—' : frame.metrics.poseFps.toFixed(1))
     confidence.set(hand === undefined ? '—' : hand.confidence.toFixed(2))
     latency.set(`${Math.round(frame.metrics.latencyMs)} ms`)
-    state.set(automatonState(frame))
+    state.set(frame.fire.state)
 
     scoreNode.textContent = String(score)
     timerNode.textContent = formatTime(timeLeftMs)
   }
 
   return { root, update }
-}
-
-/** Приближение состояния автомата по тому, что реально есть в контракте. */
-function automatonState(frame: FrameInput): string {
-  if (frame.events.shoot) return 'FIRE'
-  const hand = frame.hands[0]
-  if (hand === undefined) return 'IDLE'
-  switch (hand.gesture) {
-    case 'FIST':
-      return 'ARMED'
-    case 'SHIELD':
-      return 'SHIELD'
-    case 'AIM':
-    case 'NONE':
-      return 'IDLE'
-  }
 }
 
 function formatTime(ms: number): string {

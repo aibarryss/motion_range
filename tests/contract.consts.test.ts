@@ -1,28 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { ENV, FINGER, FIRE, PALM, SCORES, SEVERITY_ORDER, SMOOTH, THUMB, ZERO_FEATURES } from '../src/shared/consts'
+import {
+  ENV,
+  FINGER,
+  FIRE,
+  OPENING,
+  PALM,
+  SCORES,
+  SEVERITY_ORDER,
+  SMOOTH,
+  THUMB,
+  ZERO_FEATURES,
+} from '../src/shared/consts'
 
 /**
- * «Заморозка» порогов v0.2 (src/shared/consts.ts).
+ * «Заморозка» порогов v0.3 (src/shared/consts.ts).
  * Ожидаемые значения и отношения зафиксированы в docs/SPEC_Diagnostics_and_Fire.md.
  * Порядок изменения порога: SPEC -> тест -> константа
  * (и только через PR в src/shared/**, см. TASKS.md).
  */
 
-describe('THUMB — thumbExtension (SPEC §1, §3)', () => {
-  it('порог кулака и «большой палец отведён» разделены зазором', () => {
-    expect(THUMB.TARGET_MAX_FIST).toBe(0.18) // thumbExtension < 0.18 => палец прижат (кулак)
-    expect(THUMB.OUT_MIN).toBe(0.25) // thumbExtension > 0.25 => диагностика THUMB_OUT
-    expect(THUMB.TARGET_MAX_FIST).toBeLessThan(THUMB.OUT_MIN)
-  })
-
-  it('THUMB_OUT достижим: правило смотрит на fistScore без учёта большого пальца (v0.2)', () => {
-    // В v0.1 thumbExtension < 0.25 входил в fistScore, поэтому правило
-    // «thumbExtension > 0.25 при fistScore > 0.6» не могло сработать никогда.
-    expect(THUMB.OUT_FIST_SCORE_MIN).toBe(0.6)
-    expect(THUMB.OUT_FIST_SCORE_MIN).toBeGreaterThan(0)
-    expect(THUMB.OUT_FIST_SCORE_MIN).toBeLessThan(SCORES.ENTER)
-    // зазор между «палец прижат» и «палец отведён» — не пустой
-    expect(THUMB.OUT_MIN - THUMB.TARGET_MAX_FIST).toBeGreaterThan(0.05)
+describe('THUMB — курок: большой палец (SPEC §1, §2)', () => {
+  it('пороги «прижат» и «отведён» разделены зазором', () => {
+    expect(THUMB.TUCKED_MAX).toBe(0.18) // thumbExtension < 0.18 => палец прижат, курок нажат
+    expect(THUMB.EXTENDED_MIN).toBe(0.25) // thumbExtension > 0.25 => рука готова к выстрелу
+    expect(THUMB.TUCKED_MAX).toBeLessThan(THUMB.EXTENDED_MIN)
+    // зазор — это зона гистерезиса: внутри неё решение автомата не меняется
+    expect(THUMB.EXTENDED_MIN - THUMB.TUCKED_MAX).toBeGreaterThan(0.05)
   })
 })
 
@@ -56,6 +59,9 @@ describe('FINGER — изгибы и нормализация (SPEC §1)', () =>
 })
 
 describe('SCORES — гистерезис входа/выхода (SPEC §2)', () => {
+  // Внутри автомата выстрела эти пороги больше не участвуют: курок — большой палец,
+  // а для него свои THUMB.TUCKED_MAX / EXTENDED_MIN. SCORES заняты признаками
+  // (переход кулак -> ладонь) и остаются в запасе для щита.
   it('ENTER выше HOLD (антидребезг)', () => {
     expect(SCORES.HOLD).toBe(0.6)
     expect(SCORES.ENTER).toBe(0.8)
@@ -64,25 +70,29 @@ describe('SCORES — гистерезис входа/выхода (SPEC §2)', (
 })
 
 describe('FIRE — автомат выстрела (SPEC §2)', () => {
-  it('dwell/окно/кулдаун в границах спецификации', () => {
-    expect(FIRE.FIST_DWELL_MS).toBeGreaterThanOrEqual(80)
-    expect(FIRE.FIST_DWELL_MS).toBeLessThanOrEqual(120)
-    expect(FIRE.OPEN_DWELL_MS).toBeGreaterThanOrEqual(50)
-    expect(FIRE.OPEN_DWELL_MS).toBeLessThanOrEqual(80)
+  it('выдержки готовности и нажатия, пауза — в границах спецификации', () => {
+    expect(FIRE.READY_DWELL_MS).toBeGreaterThanOrEqual(80)
+    expect(FIRE.READY_DWELL_MS).toBeLessThanOrEqual(120)
+    expect(FIRE.PULL_DWELL_MS).toBeGreaterThanOrEqual(50)
+    expect(FIRE.PULL_DWELL_MS).toBeLessThanOrEqual(80)
     expect(FIRE.COOLDOWN_MS).toBeGreaterThanOrEqual(200)
     expect(FIRE.COOLDOWN_MS).toBeLessThanOrEqual(300)
   })
 
-  it('окно раскрытия 400 мс, «слишком медленно» больше окна', () => {
-    expect(FIRE.OPEN_WINDOW_MS).toBe(400)
-    expect(FIRE.TOO_SLOW_MS).toBe(600)
-    expect(FIRE.TOO_SLOW_MS).toBeGreaterThan(FIRE.OPEN_WINDOW_MS)
+  it('нажатие подтверждается быстрее готовности, иначе выстрел опаздывает', () => {
+    expect(FIRE.PULL_DWELL_MS).toBeLessThan(FIRE.READY_DWELL_MS)
   })
 
-  it('зафиксированные значения dwell/cooldown', () => {
-    expect(FIRE.FIST_DWELL_MS).toBe(100)
-    expect(FIRE.OPEN_DWELL_MS).toBe(60)
+  it('зафиксированные значения выдержек и паузы', () => {
+    expect(FIRE.READY_DWELL_MS).toBe(100)
+    expect(FIRE.PULL_DWELL_MS).toBe(60)
     expect(FIRE.COOLDOWN_MS).toBe(250)
+  })
+})
+
+describe('OPENING — окно измерения раскрытия ладони (SPEC §1)', () => {
+  it('окно заморожено', () => {
+    expect(OPENING.WINDOW_MS).toBe(400)
   })
 })
 

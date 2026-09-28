@@ -8,6 +8,7 @@
  *     картинка и точки не расходятся (`handOverlay.ts`);
  *   · распознавание запускается по кадрам камеры, а не по кадрам отрисовки;
  *   · прицел по указательному пальцу с зеркалированием и сглаживанием EMA (SPEC §2);
+ *   · автомат выстрела: курок — большой палец (SPEC §2);
  *   · яркость кадра → метрика `brightness` и диагностика TOO_DARK (SPEC §1, §3);
  *   · `NO_HAND`, когда руки нет дольше `ENV.NO_HAND_MS`;
  *   · camera fps / hand fps / время детекции для HUD (SPEC §6);
@@ -26,6 +27,7 @@ import { aimPointOf, isPointing, smoothAim, type Point2 } from './aimGesture'
 import { createBrightnessSampler, handBox } from './brightness'
 import { startCamera, type Camera } from './camera'
 import { createFeatureTracker, type FrameSize } from './features'
+import { createFireAutomaton } from './fireAutomaton'
 import { createFpsMeter } from './fps'
 import { drawOverlay } from './handOverlay'
 import { createHandTracker, type DetectedHand, type HandTracker } from './handTracker'
@@ -52,6 +54,7 @@ export function emptyFrameInput(tMs: number): FrameInput {
     hands: [],
     player: { leanX: 0, duck: 0 },
     events: { shoot: false },
+    fire: { state: 'IDLE', heldMs: 0 },
     diagnostics: [],
     metrics: { cameraFps: 0, detectFps: 0, poseFps: null, latencyMs: 0, brightness: 0 },
     calibration: null,
@@ -69,6 +72,7 @@ export function createVisionSource(): VisionSource {
   const cameraFps = createFpsMeter()
   const detectFps = createFpsMeter()
   const features = createFeatureTracker()
+  const fire = createFireAutomaton()
   let frameSize: FrameSize = { width: 0, height: 0 }
 
   let camera: Camera | null = null
@@ -220,12 +224,25 @@ export function createVisionSource(): VisionSource {
       }
     })
 
+    // Автомат выстрела кормим данными кадра, а не точками напрямую: так мок-источник
+    // работает по той же механике (SPEC §2). Курок — большой палец.
+    const aimHandFrame = handFrames.length > 0 ? handFrames[0] : undefined
+    const decision = fire.update({
+      aiming: aimHandFrame?.gesture === 'AIM',
+      thumbExtension: aimHandFrame === undefined ? null : aimHandFrame.features.thumbExtension,
+      nowMs,
+    })
+    // импульс отдаём через pendingShoot: он должен дойти до игры ровно один раз,
+    // даже если между обновлениями автомата игровой цикл прочитал кадр дважды
+    if (decision.shoot) pendingShoot = true
+
     return {
       tMs: nowMs,
       hands: handFrames,
       // Pose (наклон корпусом) не подключён — решение по нему отдельным шагом
       player: { leanX: 0, duck: 0 },
       events: { shoot: false },
+      fire: { state: decision.state, heldMs: decision.heldMs },
       diagnostics: buildDiagnostics(nowMs),
       metrics: {
         cameraFps: cameraFps.fps,
@@ -306,6 +323,7 @@ export function createVisionSource(): VisionSource {
     tracker = null
     brightness.dispose()
     features.reset()
+    fire.reset()
     hands = []
     latestFrame = null
     aim = null

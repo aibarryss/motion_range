@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
-import { FINGER, FIRE, SCORES } from '../src/shared/consts'
+import { FINGER, OPENING, SCORES } from '../src/shared/consts'
 import { LM } from '../src/vision/aimGesture'
 import { createFeatureTracker, type FrameSize } from '../src/vision/features'
 
@@ -232,7 +232,9 @@ describe('признаки руки: длительность раскрытия
   it('раскрытие дольше окна — это прицеливание, а не выстрел', () => {
     const tracker = createFeatureTracker()
     tracker.compute(fist(), SQUARE, 1000, 'R')
-    expect(tracker.compute(openPalm(), SQUARE, 1000 + FIRE.OPEN_WINDOW_MS + 100, 'R').openingSpeedMs).toBeNull()
+    expect(
+      tracker.compute(openPalm(), SQUARE, 1000 + OPENING.WINDOW_MS + 100, 'R').openingSpeedMs,
+    ).toBeNull()
   })
 
   it('у каждой руки своё состояние перехода', () => {

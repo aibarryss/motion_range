@@ -1,5 +1,5 @@
 /**
- * Примеры FrameInput для тестов и фикстур (контракт v0.2).
+ * Примеры FrameInput для тестов и фикстур (контракт v0.3).
  * Реальные типы: src/shared/types.ts
  */
 import { ZERO_FEATURES } from '../../src/shared/consts'
@@ -59,6 +59,11 @@ export const sampleFrameInput: FrameInput = {
   events: {
     shoot: false,
   },
+  // кадр сразу после выстрела: палец ещё прижат, импульс был на прошлом кадре
+  fire: {
+    state: 'COOLDOWN',
+    heldMs: 40,
+  },
   diagnostics: [sampleDiagnostic],
   metrics: {
     cameraFps: 30.1,
@@ -76,6 +81,7 @@ export const emptyFrameInput: FrameInput = {
   hands: [],
   player: { leanX: 0, duck: 0 },
   events: { shoot: false },
+  fire: { state: 'IDLE', heldMs: 0 },
   diagnostics: [],
   metrics: {
     cameraFps: 0,

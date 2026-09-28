@@ -7,8 +7,9 @@
  *
  * Что мок изображает:
  *   мышь          → рука и прицел; без движения дольше `ENV.NO_HAND_MS` → диагностика NO_HAND
- *   Space / клик  → выстрел импульсом `events.shoot` (он же скрытый fallback из SPEC §2)
- *   F (держать)   → кулак (`HandFrame.gesture = FIST`), HUD покажет ARMED
+ *   T (держать)   → большой палец прижат: так работает курок (SPEC §2), удерживая T
+ *                   дольше порогов автомат сам выдаёт выстрел
+ *   Space / клик  → выстрел импульсом `events.shoot` (скрытый fallback из SPEC §2)
  *   S (держать)   → щит (`Gesture.SHIELD`)
  *   L (держать)   → темно: brightness ниже порога → TOO_DARK
  *   C (держать)   → низкая уверенность → LOW_CONFIDENCE
@@ -21,6 +22,7 @@
 
 import { ENV, PALM, THUMB, ZERO_FEATURES } from '../shared/consts'
 import type { Diagnostic, FrameInput, Gesture, HandFrame, HandFeatures } from '../shared/types'
+import { createFireAutomaton } from './fireAutomaton'
 
 export interface MockSource {
   /** Кадр на момент nowMs. Структурно совпадает с `FrameInputReader` из game/engine. */
@@ -37,6 +39,7 @@ export function createKeyboardMockSource(): MockSource {
   let framesInWindow = 0
   let windowStartMs = performance.now()
   let cameraFps = 60
+  const fire = createFireAutomaton()
 
   const onKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase()
@@ -94,13 +97,19 @@ export function createKeyboardMockSource(): MockSource {
     const handVisible = noHandMs < ENV.NO_HAND_MS
 
     let gesture: Gesture = 'NONE'
-    if (handVisible) {
-      if (pressed.has('f')) gesture = 'FIST'
-      else if (pressed.has('s')) gesture = 'SHIELD'
-      else gesture = 'AIM'
-    }
+    if (handVisible) gesture = pressed.has('s') ? 'SHIELD' : 'AIM'
 
-    const shoot = shootQueued
+    const handFeatures = featuresFor(gesture, pressed.has('t'))
+
+    // Тот же автомат выстрела, что в vision: мок должен вести себя как настоящая камера,
+    // иначе интерфейс проверялся бы на другой механике.
+    const decision = fire.update({
+      aiming: gesture === 'AIM',
+      thumbExtension: handVisible ? handFeatures.thumbExtension : null,
+      nowMs,
+    })
+
+    const shoot = shootQueued || decision.shoot
     shootQueued = false
 
     const hands: HandFrame[] = handVisible
@@ -111,7 +120,7 @@ export function createKeyboardMockSource(): MockSource {
             x: aim.x,
             y: aim.y,
             confidence,
-            features: featuresFor(gesture),
+            features: handFeatures,
           },
         ]
       : []
@@ -121,6 +130,7 @@ export function createKeyboardMockSource(): MockSource {
       hands,
       player: { leanX: 0, duck: 0 },
       events: { shoot },
+      fire: { state: decision.state, heldMs: decision.heldMs },
       diagnostics: diagnosticsFor(handVisible, noHandMs, brightness, confidence),
       metrics: {
         cameraFps,
@@ -202,9 +212,14 @@ function diagnosticsFor(
   return list
 }
 
-function featuresFor(gesture: Gesture): HandFeatures {
+function featuresFor(gesture: Gesture, thumbTucked: boolean): HandFeatures {
+  // Курок: палец либо отведён (рука готова), либо прижат (выстрел). Значения заведомо
+  // по разные стороны порогов THUMB, чтобы автомат отрабатывал как с настоящей рукой.
+  const thumbExtension = thumbTucked ? THUMB.TUCKED_MAX - 0.08 : THUMB.EXTENDED_MIN + 0.1
+
   const base: HandFeatures = {
     ...ZERO_FEATURES,
+    thumbExtension,
     palmWidthRatio: 0.21,
     palmFrontality: PALM.FRONT + 0.04,
     palmRollDeg: 8,
@@ -212,12 +227,12 @@ function featuresFor(gesture: Gesture): HandFeatures {
 
   switch (gesture) {
     case 'FIST':
-      return { ...base, fistScore: 0.95, openPalmScore: 0.05, thumbExtension: THUMB.TARGET_MAX_FIST - 0.04 }
+      return { ...base, fistScore: 0.95, openPalmScore: 0.05 }
     case 'SHIELD':
       // щит — это palmFrontality выше порога PALM.FRONT (SPEC §1)
-      return { ...base, fistScore: 0.1, openPalmScore: 0.95, palmFrontality: PALM.FRONT + 0.16, thumbExtension: 0.5 }
+      return { ...base, fistScore: 0.1, openPalmScore: 0.95, palmFrontality: PALM.FRONT + 0.16 }
     case 'AIM':
-      return { ...base, fistScore: 0.25, openPalmScore: 0.5, thumbExtension: 0.35 }
+      return { ...base, fistScore: 0.25, openPalmScore: 0.5 }
     case 'NONE':
       return { ...ZERO_FEATURES }
   }
