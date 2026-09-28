@@ -16,3 +16,9 @@ dist/
 .DS_Store
 .zcodeignore
 .zcode/
+
+# typescript incremental artifacts
+*.tsbuildinfo
+
+# test coverage
+coverage/
