@@ -21,11 +21,12 @@
 ## Milestone 1 — жестом попадаю в мишень, счёт растёт (Пн 23:00)
 - [x] Контракт v0.1 (`src/shared/types.ts` + `consts.ts`, тег `v0.1-contract`, мерж в main — 213d23e)
 - [x] Контракт **v0.3**: `fire: FireFrame` (состояние автомата выстрела в контракте, иначе HUD показывал бы состояние из позы кисти). Механика выстрела — большой палец (SPEC §2)
+- [x] Контракт **v0.4**: курок измеряется углом `thumbIndexDeg`, а не расстоянием `thumbExtension`. Найдено на живом тесте: в позе прицела расстояние не опускалось ниже порога 0.25, автомат стоял в `ARMED` и выстрела не происходило вообще
 - [x] Контракт **v0.2** (ветка `feat/contract-v0.2`): достижимый `THUMB_OUT`, `MetricReading` вместо `measured`, `events`/`metrics`/`calibration`, `shared/diagnostics.ts`; тесты заморозки обновлены (c305ded + c8d5f26)
 - [x] Харнесс тестов: vitest + `typecheck` + `tests/**` (ветка `chore/test-harness`, c305ded) — в main ещё не влит (Шаг 6 плана ревью)
 - [x] Каркас экранов MENU/CALIBRATE/PLAY/GAMEOVER, роутер состояний @B (ветка `feat/game-skeleton`, e5310ff)
 - [x] Камера + HandLandmarker + отрисовка 21 точки × 2 руки @A (ветка `feat/game-skeleton`, 30233ea; прицел по указательному пальцу, яркость, диагностики NO_HAND/TOO_DARK, мок остался запасным по `?input=mock`)
-- [x] Признаки: fistScore, openPalmScore, thumbExtension, palmFrontality, palmWidthRatio @A (5aff72c; добавлены углы сгиба пальцев, palmRoll и длительность раскрытия; вывод в панель «Признаки (debug)», 16 тестов)
+- [x] Признаки: fistScore, openPalmScore, thumbIndexDeg, palmFrontality, palmWidthRatio @A (5aff72c; добавлены углы сгиба пальцев, palmRoll и длительность раскрытия; вывод в панель «Признаки (debug)», 19 тестов)
 - [x] Мок-FrameInput с клавиатуры + игровой цикл: мишени, прицел, попадание, счёт, таймер 60 с @B (ветка `feat/game-skeleton`, e5310ff; правила раунда закреплены в `tests/engine.test.ts`)
 - [x] Автомат выстрела по SPEC §2: **курок — большой палец** (выдержка готовности, выдержка нажатия, пауза от момента выстрела, гистерезис по `THUMB`; числа только в `consts.ts`) @A — 11 тестов, `tests/fireAutomaton.test.ts` (20:45–21:45)
 - [x] Интеграция: реальный поток вместо мока, HUD (счёт/время/индикатор), зеркалирование видео — сделано вместе с подключением камеры (30233ea, 755a45c); HUD читает состояние автомата из контракта v0.3

@@ -3,7 +3,7 @@
  * Текстовое описание и условия правил — docs/SPEC_Diagnostics_and_Fire.md.
  * Порядок изменения порога: SPEC → тест заморозки → эта константа.
  *
- * Версия: v0.2 (правка большого пальца, см. THUMB и SPEC §0).
+ * Версия: v0.4 (курок измеряется углом, см. THUMB и SPEC §0).
  */
 
 import type { DiagnosticSeverity, HandFeatures } from './types'
@@ -14,12 +14,16 @@ import type { DiagnosticSeverity, HandFeatures } from './types'
  * Большой палец — это курок (решение от 28.09, SPEC §2).
  * Палец отведён — рука готова к выстрелу, палец прижат — выстрел.
  * Между порогами работает гистерезис: значение в этой зоне не меняет решения.
+ *
+ * Пороги измеряются в градусах (`thumbIndexDeg` — угол между осями большого и указательного
+ * пальцев), а не в долях ладони (v0.4): в позе прицела указательный разогнут, и расстояние
+ * до точки 5 не опускается ниже порога, поэтому выстрела не происходило вовсе.
  */
 export const THUMB = {
-  /** thumbExtension < 0.18 — палец прижат к ладони, курок нажат. */
-  TUCKED_MAX: 0.18,
-  /** thumbExtension > 0.25 — палец отведён, рука готова к выстрелу. */
-  EXTENDED_MIN: 0.25,
+  /** thumbIndexDeg < 30° — палец идёт вдоль указательного, курок нажат. */
+  TUCKED_MAX_DEG: 30,
+  /** thumbIndexDeg > 45° — палец отведён в сторону, рука готова к выстрелу. */
+  EXTENDED_MIN_DEG: 45,
 } as const;
 
 export const PALM = {
@@ -107,7 +111,9 @@ export const SEVERITY_ORDER: Record<DiagnosticSeverity, number> = {
 export const ZERO_FEATURES: HandFeatures = {
   fistScore: 0,
   openPalmScore: 0,
-  thumbExtension: 0,
+  // 0° — «палец вдоль указательного». Для заглушки это значение по умолчанию:
+  // мок и vision всегда пересчитывают признак, до автомата ноль не доходит.
+  thumbIndexDeg: 0,
   palmFrontality: 0,
   palmWidthRatio: 0,
   palmRollDeg: 0,

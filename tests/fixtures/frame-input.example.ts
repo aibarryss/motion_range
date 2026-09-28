@@ -35,7 +35,7 @@ export const sampleFrameInput: FrameInput = {
       features: {
         fistScore: 0,
         openPalmScore: 0.25,
-        thumbExtension: 0.12,
+        thumbIndexDeg: 12,
         palmFrontality: 0.86,
         palmWidthRatio: 0.21,
         palmRollDeg: 8,
@@ -49,7 +49,7 @@ export const sampleFrameInput: FrameInput = {
       x: 0.38,
       y: 0.55,
       confidence: 0.44,
-      features: { ...ZERO_FEATURES, thumbExtension: 0.09 },
+      features: { ...ZERO_FEATURES, thumbIndexDeg: 22 },
     },
   ],
   player: {

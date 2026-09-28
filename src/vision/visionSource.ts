@@ -14,10 +14,9 @@
  *   · camera fps / hand fps / время детекции для HUD (SPEC §6);
  *   · выстрел по Space — скрытый фолбэк из SPEC §2.
  *
- * Чего здесь ещё нет (следующие шаги): признаки SPEC §1 (углы сгиба, `fistScore`,
- * `openPalmScore`, `thumbExtension`, `palmFrontality`, `palmWidthRatio`, `palmRoll`),
- * автомат выстрела IDLE → ARMED → FIRE, щит, остальные девять диагностик, калибровка.
- * До этого `HandFrame.features` заполняется нулями — честная заглушка, а не выдуманные числа.
+ * Чего здесь ещё нет (следующие шаги): щит (`Gesture.SHIELD` по `palmFrontality`),
+ * остальные девять диагностик, калибровка. Признаки SPEC §1 считаются полностью
+ * (`features.ts`), автомат выстрела работает по `thumbIndexDeg`.
  */
 
 import { ENV, SMOOTH } from '../shared/consts'
@@ -229,7 +228,7 @@ export function createVisionSource(): VisionSource {
     const aimHandFrame = handFrames.length > 0 ? handFrames[0] : undefined
     const decision = fire.update({
       aiming: aimHandFrame?.gesture === 'AIM',
-      thumbExtension: aimHandFrame === undefined ? null : aimHandFrame.features.thumbExtension,
+      thumbIndexDeg: aimHandFrame === undefined ? null : aimHandFrame.features.thumbIndexDeg,
       nowMs,
     })
     // импульс отдаём через pendingShoot: он должен дойти до игры ровно один раз,

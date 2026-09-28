@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
-import { FINGER, OPENING, SCORES } from '../src/shared/consts'
+import { FINGER, OPENING, SCORES, THUMB } from '../src/shared/consts'
 import { LM } from '../src/vision/aimGesture'
 import { createFeatureTracker, type FrameSize } from '../src/vision/features'
 
@@ -96,14 +96,17 @@ function buildHand(
   return points
 }
 
-/** Раскрытая ладонь: все пальцы прямые. */
+/** Раскрытая ладонь с заданным положением большого пальца: так проверяется курок. */
+function openFingers(options: { thumbTip?: readonly [number, number] } = {}): NormalizedLandmark[] {
+  return buildHand(
+    MCP_LIST.map((mcp) => ({ mcp, bendDeg: 0 })) as [FingerSpec, FingerSpec, FingerSpec, FingerSpec],
+    options,
+  )
+}
+
+/** Раскрытая ладонь: все пальцы прямые, большой палец как в спокойной кисти. */
 function openPalm(): NormalizedLandmark[] {
-  return buildHand(MCP_LIST.map((mcp) => ({ mcp, bendDeg: 0 })) as [
-    FingerSpec,
-    FingerSpec,
-    FingerSpec,
-    FingerSpec,
-  ])
+  return openFingers()
 }
 
 /** Кулак: пальцы складываются в сторону середины ладони, кончики ложатся на ладонь. */
@@ -150,14 +153,44 @@ describe('признаки руки: кулак и ладонь', () => {
 })
 
 describe('признаки руки: большой палец, разворот ладони, дистанция', () => {
-  it('thumbExtension — расстояние от кончика большого пальца до точки 5 в единицах ширины ладони', () => {
-    // W = 0.18; шаг до точки 5 делаем 0.036 → ожидаем ровно 0.2
+  it('thumbIndexDeg: палец вдоль указательного — угол почти нулевой (курок нажат)', () => {
+    // ось большого пальца (2→4) смотрит туда же, куда ось указательного (5→8)
     const hand = buildHand(
       MCP_LIST.map((mcp) => ({ mcp, bendDeg: 0 })) as [FingerSpec, FingerSpec, FingerSpec, FingerSpec],
-      { thumbTip: [0.456, 0.6] },
+      { thumbTip: [0.43, 0.5] },
     )
     const features = createFeatureTracker().compute(hand, SQUARE, 0, 'R')
-    expect(features.thumbExtension).toBeCloseTo(0.2, 2)
+    expect(features.thumbIndexDeg).toBeCloseTo(0, 1)
+    expect(features.thumbIndexDeg).toBeLessThan(THUMB.TUCKED_MAX_DEG)
+  })
+
+  it('thumbIndexDeg: отведённый палец — угол выше порога готовности', () => {
+    const features = createFeatureTracker().compute(openPalm(), SQUARE, 0, 'R')
+    expect(features.thumbIndexDeg).toBeGreaterThan(THUMB.EXTENDED_MIN_DEG)
+    expect(features.thumbIndexDeg).toBeLessThan(90)
+  })
+
+  it('thumbIndexDeg растёт по мере отведения пальца в сторону', () => {
+    // вдоль указательного (0°) → как в спокойной кисти (~60°) → строго в сторону (90°)
+    const along = openFingers({ thumbTip: [0.43, 0.5] })
+    const relaxed = openPalm()
+    const aside = openFingers({ thumbTip: [0.28, 0.66] })
+    const tracker = createFeatureTracker()
+    const a = tracker.compute(along, SQUARE, 0, 'R').thumbIndexDeg
+    const b = tracker.compute(relaxed, SQUARE, 0, 'R').thumbIndexDeg
+    const c = tracker.compute(aside, SQUARE, 0, 'R').thumbIndexDeg
+    expect(a).toBeLessThan(b)
+    expect(b).toBeLessThan(c)
+  })
+
+  it('угол считается в 3D: палец, ушедший в глубину, не считается параллельным', () => {
+    // На плоскости палец параллелен указательному, но направлен в камеру — это не курок.
+    // Без третьей координаты выстрел срабатывал бы от одного вида руки.
+    const hand = openFingers({ thumbTip: [0.43, 0.5] })
+    const tip = hand[LM.THUMB_TIP]
+    if (tip !== undefined) tip.z = -0.25
+    const features = createFeatureTracker().compute(hand, SQUARE, 0, 'R')
+    expect(features.thumbIndexDeg).toBeGreaterThan(THUMB.EXTENDED_MIN_DEG)
   })
 
   it('palmWidthRatio — ширина ладони в долях кадра', () => {
@@ -263,7 +296,7 @@ describe('признаки руки: плохие данные не ломают
     }
     const features = createFeatureTracker().compute(hand, SQUARE, 0, 'R')
     expect(features.palmWidthRatio).toBe(0)
-    expect(Number.isFinite(features.thumbExtension)).toBe(true)
+    expect(Number.isFinite(features.thumbIndexDeg)).toBe(true)
   })
 
   it('размер кадра 0 не даёт деления на ноль', () => {

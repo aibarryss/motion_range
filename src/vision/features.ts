@@ -71,14 +71,18 @@ export function createFeatureTracker(): FeatureTracker {
 
     const wrist = points[LM.WRIST]
     const middleMcp = points[LM.MIDDLE_MCP]
+    const thumbMcp = points[LM.THUMB_MCP]
     const thumbTip = points[LM.THUMB_TIP]
     const indexMcp = points[LM.INDEX_MCP]
+    const indexTip = points[LM.INDEX_TIP]
     const pinkyMcp = points[LM.PINKY_MCP]
     if (
       wrist === undefined ||
       middleMcp === undefined ||
+      thumbMcp === undefined ||
       thumbTip === undefined ||
       indexMcp === undefined ||
+      indexTip === undefined ||
       pinkyMcp === undefined
     ) {
       return { ...ZERO_FEATURES }
@@ -124,14 +128,17 @@ export function createFeatureTracker(): FeatureTracker {
     const fistScore = mean(curled) * mean(tipsNearPalm)
     const openPalmScore = mean(opened) * mean(tipsFarFromWrist)
 
-    const thumbExtension = distance2(thumbTip, indexMcp) / palmWidth
+    // Курок (v0.4): угол между осью большого пальца (2→4) и осью указательного (5→8).
+    // Угол, а не расстояние: в позе прицела указательный разогнут, и расстояние от кончика
+    // большого пальца до точки 5 не опускается ниже порога — выстрел был недостижим.
+    const thumbIndexDeg = angleBetween3Deg(vector3(thumbMcp, thumbTip), vector3(indexMcp, indexTip))
     const palmFrontality = palmFrontalityOf(indexMcp, pinkyMcp)
     const palmRollDeg = palmRollOf(indexMcp, pinkyMcp)
 
     return {
       fistScore,
       openPalmScore,
-      thumbExtension,
+      thumbIndexDeg,
       palmFrontality,
       palmWidthRatio: palmWidth,
       palmRollDeg,
@@ -190,6 +197,24 @@ function toFrameUnits(landmarks: readonly NormalizedLandmark[], size: FrameSize)
 
 function distance2(a: P, b: P): number {
   return Math.hypot(a.u - b.u, a.v - b.v)
+}
+
+/** Вектор из точки `from` в точку `to` — для углов между пальцами. */
+function vector3(from: P, to: P): P {
+  return { u: to.u - from.u, v: to.v - from.v, z: to.z - from.z }
+}
+
+/**
+ * Угол между двумя векторами в 3D, в градусах.
+ * Третья координата MediaPipe (`z`) идёт в том же масштабе, что `x`, поэтому вектор в объёме
+ * даёт честный угол даже когда палец направлен в камеру и на картинке кажется коротким.
+ */
+function angleBetween3Deg(a: P, b: P): number {
+  const lenA = Math.sqrt(a.u * a.u + a.v * a.v + a.z * a.z)
+  const lenB = Math.sqrt(b.u * b.u + b.v * b.v + b.z * b.z)
+  if (lenA === 0 || lenB === 0) return 0
+  const cos = clamp((a.u * b.u + a.v * b.v + a.z * b.z) / (lenA * lenB), -1, 1)
+  return (Math.acos(cos) * 180) / Math.PI
 }
 
 function distance3(a: P, b: P): number {

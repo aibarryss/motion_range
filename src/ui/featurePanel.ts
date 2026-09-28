@@ -25,7 +25,7 @@ export function createFeaturePanel(): FeaturePanel {
   const hand = labeledLine('рука', 'features__row')
   const fistScore = labeledLine('fistScore', 'features__row')
   const openPalmScore = labeledLine('openPalmScore', 'features__row')
-  const thumbExtension = labeledLine('thumbExtension', 'features__row')
+  const thumbIndexDeg = labeledLine('thumbIndexDeg', 'features__row')
   const palmFrontality = labeledLine('palmFrontality', 'features__row')
   const palmWidthRatio = labeledLine('palmWidthRatio', 'features__row')
   const palmRoll = labeledLine('palmRoll', 'features__row')
@@ -36,7 +36,7 @@ export function createFeaturePanel(): FeaturePanel {
     hand,
     fistScore,
     openPalmScore,
-    thumbExtension,
+    thumbIndexDeg,
     palmFrontality,
     palmWidthRatio,
     palmRoll,
@@ -56,7 +56,7 @@ export function createFeaturePanel(): FeaturePanel {
     hand.set(first.handedness)
     fistScore.set(formatValue(features.fistScore, 'ratio'))
     openPalmScore.set(formatValue(features.openPalmScore, 'ratio'))
-    thumbExtension.set(formatValue(features.thumbExtension, 'ratio'))
+    thumbIndexDeg.set(formatValue(features.thumbIndexDeg, 'deg'))
     palmFrontality.set(formatValue(features.palmFrontality, 'ratio'))
     palmWidthRatio.set(formatValue(features.palmWidthRatio, 'ratio'))
     palmRoll.set(formatValue(features.palmRollDeg, 'deg'))

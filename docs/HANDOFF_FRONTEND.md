@@ -3,8 +3,8 @@
 **Кому:** B — продукт, игра, UX, деплой (`src/game/**`, `src/ui/**`, `src/style.css`).
 **От кого:** A — распознавание (`src/vision/**`, `tests/**`).
 **Ветка:** `feat/game-skeleton`.
-**Состояние на момент передачи:** `npm run typecheck` — чисто, `npm test` — **78 тестов зелёные**, `npm run build` — собирается (29 модулей, JS 176 КБ / 58 КБ gzip).
-**Контракт:** `src/shared/types.ts` версии **v0.3** (до этого — v0.2 в ветке `feat/contract-v0.2`, v0.1 на теге `v0.1-contract`).
+**Состояние на момент передачи:** `npm run typecheck` — чисто, `npm test` — **82 теста зелёные**, `npm run build` — собирается (29 модулей, JS 176 КБ / 58 КБ gzip).
+**Контракт:** `src/shared/types.ts` версии **v0.4** (до этого — v0.3 и v0.2, v0.1 на теге `v0.1-contract`). Все версии описаны в `docs/SPEC_Diagnostics_and_Fire.md`, §0.
 
 Документ отвечает на три вопроса: что уже можно не делать, как этим пользоваться и что осталось именно на фронтенде.
 
@@ -30,7 +30,7 @@ npm run typecheck  # tsc по src и по tests
 npm run build      # production-сборка в dist/
 ```
 
-Проверка «всё на месте»: в консоли `npm test` должно быть **7 файлов / 78 тестов passed**. Другой номер — значит ветка не та.
+Проверка «всё на месте»: в консоли `npm test` должно быть **7 файлов / 82 теста passed**. Другой номер — значит ветка не та.
 
 ---
 
@@ -69,13 +69,13 @@ npm run build      # production-сборка в dist/
 |---|---|
 | `src/ui/hud.ts` | `camera fps`, `hand fps`, `pose fps`, `confidence`, `round-trip`, `state` (состояние автомата выстрела из контракта: `IDLE/ARMED/FIRE/COOLDOWN`), счёт, таймер |
 | `src/ui/diagnostic.ts` | Signal Doctor: 4 индикатора (`Hand visible`, `Palm facing camera`, `Fingers open`, `Motion speed`) + полоса яркости; карточка диагностики в формате «что случилось / почему с числами / что делать / шкала» |
-| `src/ui/featurePanel.ts` | Панель «Признаки (debug)»: `fistScore`, `openPalmScore`, `thumbExtension`, `palmFrontality`, `palmWidthRatio`, `palmRollDeg`. Это диагностический инструмент — на демо её можно прятать |
+| `src/ui/featurePanel.ts` | Панель «Признаки (debug)»: `fistScore`, `openPalmScore`, `thumbIndexDeg`, `palmFrontality`, `palmWidthRatio`, `palmRollDeg`. Это диагностический инструмент — на демо её можно прятать |
 
 Игровой цикл «попадание / промах / просрочка мишени», счёт, таймер 60 с, рестарт («Ещё раз» на финальном экране) — работают.
 
 ---
 
-## 3. Контракт v0.3 — минимум, который нужен фронтенду
+## 3. Контракт v0.4 — минимум, который нужен фронтенду
 
 Игра и UI читают **один объект** `FrameInput` (`src/shared/types.ts`). Источник кадров не важен: реальная камера или мок — поля одинаковые.
 

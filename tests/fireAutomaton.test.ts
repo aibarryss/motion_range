@@ -1,7 +1,7 @@
 /**
  * Тесты автомата выстрела (SPEC §2): курок — большой палец.
  *
- * Логика чистая: время и значение `thumbExtension` задаём сами, камера не нужна.
+ * Логика чистая: время и значение `thumbIndexDeg` задаём сами, камера не нужна.
  * Проверяем не только «выстрел есть», но и защиты: подтверждение позы, гистерезис,
  * пауза между выстрелами и то, что потеря руки выстрела не даёт.
  */
@@ -10,12 +10,12 @@ import { describe, expect, it } from 'vitest'
 import { FIRE, THUMB } from '../src/shared/consts'
 import { createFireAutomaton, type FireAutomaton, type FireDecision } from '../src/vision/fireAutomaton'
 
-/** Палец отведён: рука готова к выстрелу. */
-const EXTENDED = THUMB.EXTENDED_MIN + 0.1
-/** Палец прижат: курок нажат. */
-const TUCKED = THUMB.TUCKED_MAX - 0.08
+/** Палец отведён в сторону: рука готова к выстрелу. */
+const EXTENDED = THUMB.EXTENDED_MIN_DEG + 15
+/** Палец прижат, идёт вдоль указательного: курок нажат. */
+const TUCKED = THUMB.TUCKED_MAX_DEG - 10
 /** Значение между порогами: решение не должно меняться (гистерезис). */
-const DEAD_ZONE = (THUMB.TUCKED_MAX + THUMB.EXTENDED_MIN) / 2
+const DEAD_ZONE = (THUMB.TUCKED_MAX_DEG + THUMB.EXTENDED_MIN_DEG) / 2
 
 function step(
   automaton: FireAutomaton,
@@ -23,7 +23,7 @@ function step(
   thumb: number | null,
   aiming = true,
 ): FireDecision {
-  return automaton.update({ aiming, thumbExtension: thumb, nowMs })
+  return automaton.update({ aiming, thumbIndexDeg: thumb, nowMs })
 }
 
 describe('автомат выстрела: курок — большой палец', () => {

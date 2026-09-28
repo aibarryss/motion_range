@@ -105,7 +105,7 @@ export function createKeyboardMockSource(): MockSource {
     // иначе интерфейс проверялся бы на другой механике.
     const decision = fire.update({
       aiming: gesture === 'AIM',
-      thumbExtension: handVisible ? handFeatures.thumbExtension : null,
+      thumbIndexDeg: handVisible ? handFeatures.thumbIndexDeg : null,
       nowMs,
     })
 
@@ -215,11 +215,13 @@ function diagnosticsFor(
 function featuresFor(gesture: Gesture, thumbTucked: boolean): HandFeatures {
   // Курок: палец либо отведён (рука готова), либо прижат (выстрел). Значения заведомо
   // по разные стороны порогов THUMB, чтобы автомат отрабатывал как с настоящей рукой.
-  const thumbExtension = thumbTucked ? THUMB.TUCKED_MAX - 0.08 : THUMB.EXTENDED_MIN + 0.1
+  const thumbIndexDeg = thumbTucked
+    ? THUMB.TUCKED_MAX_DEG - 10
+    : THUMB.EXTENDED_MIN_DEG + 15
 
   const base: HandFeatures = {
     ...ZERO_FEATURES,
-    thumbExtension,
+    thumbIndexDeg,
     palmWidthRatio: 0.21,
     palmFrontality: PALM.FRONT + 0.04,
     palmRollDeg: 8,

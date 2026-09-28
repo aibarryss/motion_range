@@ -19,13 +19,22 @@ import {
  * (и только через PR в src/shared/**, см. TASKS.md).
  */
 
-describe('THUMB — курок: большой палец (SPEC §1, §2)', () => {
+describe('THUMB — курок: угол между большим и указательным пальцем (SPEC §1, §2)', () => {
   it('пороги «прижат» и «отведён» разделены зазором', () => {
-    expect(THUMB.TUCKED_MAX).toBe(0.18) // thumbExtension < 0.18 => палец прижат, курок нажат
-    expect(THUMB.EXTENDED_MIN).toBe(0.25) // thumbExtension > 0.25 => рука готова к выстрелу
-    expect(THUMB.TUCKED_MAX).toBeLessThan(THUMB.EXTENDED_MIN)
+    // v0.4: пороги в градусах. Раньше здесь было расстояние до точки 5 (0.18 / 0.25),
+    // но в позе прицела оно не опускалось ниже 0.25 — выстрела не было вовсе.
+    expect(THUMB.TUCKED_MAX_DEG).toBe(30) // thumbIndexDeg < 30° => палец вдоль указательного
+    expect(THUMB.EXTENDED_MIN_DEG).toBe(45) // thumbIndexDeg > 45° => палец отведён, рука готова
+    expect(THUMB.TUCKED_MAX_DEG).toBeLessThan(THUMB.EXTENDED_MIN_DEG)
     // зазор — это зона гистерезиса: внутри неё решение автомата не меняется
-    expect(THUMB.EXTENDED_MIN - THUMB.TUCKED_MAX).toBeGreaterThan(0.05)
+    expect(THUMB.EXTENDED_MIN_DEG - THUMB.TUCKED_MAX_DEG).toBeGreaterThanOrEqual(10)
+  })
+
+  it('пороги физически достижимы: поза «вдоль указательного» и поза «в сторону»', () => {
+    // Отведённый палец в «пистолетной» позе даёт угол порядка 60°, прижатый — порядка 15°.
+    // Если поднять порог выше, до выстрела дело не дойдёт (именно это и случилось в v0.3).
+    expect(THUMB.EXTENDED_MIN_DEG).toBeLessThan(60)
+    expect(THUMB.TUCKED_MAX_DEG).toBeGreaterThan(5)
   })
 })
 
@@ -60,7 +69,7 @@ describe('FINGER — изгибы и нормализация (SPEC §1)', () =>
 
 describe('SCORES — гистерезис входа/выхода (SPEC §2)', () => {
   // Внутри автомата выстрела эти пороги больше не участвуют: курок — большой палец,
-  // а для него свои THUMB.TUCKED_MAX / EXTENDED_MIN. SCORES заняты признаками
+  // а для него свои THUMB.TUCKED_MAX_DEG / EXTENDED_MIN_DEG. SCORES заняты признаками
   // (переход кулак -> ладонь) и остаются в запасе для щита.
   it('ENTER выше HOLD (антидребезг)', () => {
     expect(SCORES.HOLD).toBe(0.6)

@@ -9,8 +9,8 @@
  * выстрела — игрок целится и стреляет одной и той же позой, как из пистолета. Поэтому
  * автомат крутится вокруг большого пальца, а не вокруг всей кисти.
  *
- * Гистерезис: палец считается отведённым при `THUMB.EXTENDED_MIN`, прижатым — при
- * `THUMB.TUCKED_MAX`. Пока значение держится между порогами, решение не меняется —
+ * Гистерезис: палец считается отведённым при `THUMB.EXTENDED_MIN_DEG`, прижатым — при
+ * `THUMB.TUCKED_MAX_DEG`. Пока значение держится между порогами, решение не меняется —
  * иначе значение на границе давало бы очередь выстрелов.
  *
  * Палец, прижатый всё время, выстрела не даёт: сначала нужно показать готовность
@@ -23,8 +23,12 @@ import type { FireState } from '../shared/types'
 export interface FireInput {
   /** Рука в позе прицела: указательный вытянут, остальные поджаты. */
   aiming: boolean
-  /** Признак `thumbExtension`: чем меньше, тем плотнее палец прижат к ладони. null — руки нет. */
-  thumbExtension: number | null
+  /**
+   * Признак `thumbIndexDeg`: угол между большим и указательным пальцем в градусах.
+   * Малый угол — палец идёт вдоль указательного (курок нажат), большой — палец отведён.
+   * null — руки нет.
+   */
+  thumbIndexDeg: number | null
   nowMs: number
 }
 
@@ -63,7 +67,7 @@ export function createFireAutomaton(): FireAutomaton {
   }
 
   function latch(input: FireInput): void {
-    const thumb = input.thumbExtension
+    const thumb = input.thumbIndexDeg
 
     // руки нет или рука не в позе прицела: ни готовности, ни нажатия
     if (thumb === null || !input.aiming) {
@@ -72,13 +76,13 @@ export function createFireAutomaton(): FireAutomaton {
       return
     }
 
-    if (thumb > THUMB.EXTENDED_MIN) {
+    if (thumb > THUMB.EXTENDED_MIN_DEG) {
       latchedExtended = true
       pullStartedMs = null
       return
     }
 
-    if (thumb < THUMB.TUCKED_MAX && latchedExtended) {
+    if (thumb < THUMB.TUCKED_MAX_DEG && latchedExtended) {
       latchedExtended = false
       pullStartedMs = input.nowMs
     }

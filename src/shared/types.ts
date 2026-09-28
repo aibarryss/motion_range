@@ -1,6 +1,6 @@
 /**
  * Замороженный контракт между Vision (A) и Game (B).
- * Версия: **v0.3** (изменения против v0.1 — в docs/SPEC_Diagnostics_and_Fire.md, §0).
+ * Версия: **v0.4** (изменения против v0.1 — в docs/SPEC_Diagnostics_and_Fire.md, §0).
  * После тега v0.2-contract меняется только вдвоём, через PR в src/shared/**.
  *
  * Правило проекта: числа в контракте не хранятся — только пороги из consts.ts,
@@ -31,7 +31,7 @@ export type DiagnosticSeverity = 'info' | 'warn' | 'block';
 export type FeatureName =
   | 'fistScore'
   | 'openPalmScore'
-  | 'thumbExtension'
+  | 'thumbIndexDeg'
   | 'palmFrontality'
   | 'palmWidthRatio'
   | 'palmRollDeg'
@@ -94,12 +94,16 @@ export interface HandFeatures {
   /**
    * Геометрия пальцев без участия большого пальца (v0.2).
    * Почему без большого: правило THUMB_OUT проверяет отведённый палец,
-   * а если thumbExtension входит в fistScore — правило становится недостижимым.
+   * а если курок входит в fistScore — правило становится недостижимым.
    */
   fistScore: number;
   openPalmScore: number;
-  /** |landmark[4] − landmark[5]| / W, W = ширина ладони. */
-  thumbExtension: number;
+  /**
+   * Курок (v0.4): угол в градусах между осью большого пальца (2→4) и осью указательного (5→8).
+   * Малый угол — палец ведёт вдоль указательного (курок нажат), большой — палец отведён.
+   * Считается в 3D по x/y/z: игрок целится в камеру, и на плоской картинке палец укорачивается.
+   */
+  thumbIndexDeg: number;
   /** W_2d / W_3d: 1 — ладонь к камере, < 0.5 — ребром. */
   palmFrontality: number;
   /** W в пикселях / ширина кадра — прокси дистанции. */
@@ -177,8 +181,8 @@ export interface CalibrationProfile {
   version: 1;
   /** стабильная зона ладони: медиана ± коридор */
   palmWidthRatioStable: { min: number; max: number };
-  /** личная норма большого пальца в кулаке */
-  thumbExtensionCalm: number;
+  /** личные углы курка: насколько игрок отводит палец и насколько плотно ведёт его вдоль указательного */
+  thumbIndexDegCalm: number;
   /** личный темп раскрытия кулака, мс */
   openDurationPersonalMs: number;
   brightnessBaseline: number;
