@@ -177,8 +177,11 @@ body {
   gap: 0.75rem;
 }
 
-/* Сцена держится ровно 4:3 — так же, как кадр камеры 640×480.
-   Тогда координаты руки пересчитываются в экран без обрезки и искажений. */
+/* Пропорции сцены берём у настоящего кадра камеры: `--video-ratio` выставляет vision
+   после старта (640×480 → 1.3333, 1280×720 → 1.7778). Число по умолчанию — 4:3,
+   чтобы мок-режим и первый кадр выглядели нормально.
+   Без этого видео при `object-fit: cover` обрезалось бы, а скелет рисовался бы по всей
+   рамке — точки уезжали бы от руки тем сильнее, чем дальше от центра. */
 .play__stage-frame {
   display: grid;
   place-items: center;
@@ -187,8 +190,8 @@ body {
 
 .play__stage {
   position: relative;
-  width: min(100%, calc((100vh - 2rem) * 4 / 3));
-  aspect-ratio: 4 / 3;
+  width: min(100%, calc((100vh - 2rem) * var(--video-ratio, 1.33333)));
+  aspect-ratio: var(--video-ratio, 4 / 3);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 0.75rem;

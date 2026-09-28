@@ -159,7 +159,10 @@ export function createPlayScreen(ctx: AppContext): Screen {
         stage.insertBefore(mountedVideo, stage.firstChild)
         stage.insertBefore(source.overlay, canvas)
         readFrame = source.read
-        setControls(VISION_CONTROLS)
+        const frameSize = applyVideoAspect(mountedVideo)
+        setControls(
+          frameSize === null ? VISION_CONTROLS : [...VISION_CONTROLS, `кадр камеры: ${frameSize}`],
+        )
         hideStatus()
         startEngine()
       })
@@ -186,6 +189,24 @@ export function createPlayScreen(ctx: AppContext): Screen {
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape') finishRound(performance.now())
+  }
+
+  /**
+   * Сцена подстраивается под настоящий кадр камеры, а не под заранее заданные 4:3.
+   *
+   * Зачем: координаты руки приходят в долях кадра камеры. Если рамка сцены другой пропорции,
+   * `object-fit: cover` обрезает видео, а скелет рисуется по всей рамке — точки уезжают от руки
+   * тем сильнее, чем дальше от центра кадра. Когда пропорции совпадают, обрезки нет вообще.
+   *
+   * Возвращает размер кадра строкой — он же показывается в блоке «Управление», чтобы при
+   * разборе проблем было видно, что именно отдала камера.
+   */
+  function applyVideoAspect(video: HTMLVideoElement): string | null {
+    const width = video.videoWidth
+    const height = video.videoHeight
+    if (width === 0 || height === 0) return null
+    frameBox.style.setProperty('--video-ratio', String(width / height))
+    return `${width}×${height}`
   }
 
   function draw(snapshot: GameSnapshot): void {
