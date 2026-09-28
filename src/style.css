@@ -177,18 +177,69 @@ body {
   gap: 0.75rem;
 }
 
+/* Сцена держится ровно 4:3 — так же, как кадр камеры 640×480.
+   Тогда координаты руки пересчитываются в экран без обрезки и искажений. */
+.play__stage-frame {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
 .play__stage {
   position: relative;
+  width: min(100%, calc((100vh - 2rem) * 4 / 3));
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 0.75rem;
   background: #05070d;
 }
 
+/* Зеркалим показ: человек ждёт, что поднятая правая рука уедет вправо.
+   Тот же разворот применён к координатам в vision (aimGesture.aimPointOf). */
+.play__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: #05070d;
+}
+
+.play__overlay,
 .play__canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.play__status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  background: rgba(5, 7, 13, 0.88);
+}
+
+.play__status[hidden] {
+  display: none;
+}
+
+.play__status-box {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 34rem;
+  justify-items: center;
+}
+
+.play__status-title {
+  font-size: 1.15rem;
+  font-weight: 600;
 }
 
 .play__side {
@@ -205,6 +256,8 @@ body {
   pointer-events: none;
   display: grid;
   align-content: space-between;
+  /* метрики читаются поверх видео только с подложкой из тени */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
 }
 
 .hud__top {
