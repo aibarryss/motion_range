@@ -98,3 +98,26 @@ export const ZERO_FEATURES: HandFeatures = {
   openingSpeedMs: null,
   fingerCurlDeg: [0, 0, 0, 0],
 };
+
+// --- параметры игрового раунда (игровой баланс, а не пороги распознавания) ---
+
+/**
+ * Числа раунда живут здесь по правилу проекта «числа — только в SPEC и consts.ts»:
+ * SPEC_Diagnostics_and_Fire.md описывает распознавание и диагностику,
+ * баланс раунда — только тут. Движок и экраны читают отсюда, своих копий не держат.
+ */
+export const GAME = {
+  ROUND_MS: 60_000, // длительность раунда
+  TARGET_LIFETIME_MS: 2_600, // сколько мишень живёт до «просрочки»
+  TARGET_RADIUS_MIN: 0.055, // радиус мишени, доля меньшей стороны сцены
+  TARGET_RADIUS_MAX: 0.095,
+  SPAWN_INTERVAL_MIN_MS: 550, // пауза между появлениями мишеней
+  SPAWN_INTERVAL_MAX_MS: 1_100,
+  MAX_TARGETS: 3, // одновременно на экране
+  PLAYFIELD_MARGIN: 0.12, // отступ от краёв, чтобы мишени не липли к рамке
+  HIT_RADIUS_FACTOR: 1.15, // попадание = прицел ближе радиуса × 1.15
+  SCORE_HIT: 10,
+  SCORE_MISS: -2, // выстрел в пустоту
+  SCORE_EXPIRED: -1, // мишень не успели сбить
+  SCORE_FLOOR: 0, // счёт не уходит ниже нуля
+} as const;
