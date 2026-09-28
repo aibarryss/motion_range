@@ -53,7 +53,8 @@ export function createPlayScreen(ctx: AppContext): Screen {
   const status = el('div', 'play__status')
   const hud = createHud()
   status.hidden = true
-  stage.append(canvas, hud.root)
+  // status последним: панель должна перекрывать и видео, и оба холста
+  stage.append(canvas, hud.root, status)
   frameBox.append(stage)
 
   const doctor = createSignalDoctor()
